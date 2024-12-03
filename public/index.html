@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+    <!-- Add Prism.js CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism-themes/1.9.0/prism-night-owl.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css">
+</head>
+<body class="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto p-4 h-screen flex flex-col max-w-5xl">
+        <header class="flex justify-between items-center mb-4 p-4 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 text-transparent bg-clip-text">AI Chat Assistant</h1>
+            <button id="theme-toggle" 
+                    class="p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-300 text-purple-500 dark:text-purple-400">
+                <svg class="w-6 h-6 sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <svg class="w-6 h-6 moon-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </header>
+
+        <main class="flex-grow flex flex-col">
+            <div id="chat-messages" 
+                    class="flex-grow overflow-y-auto p-4 space-y-4 rounded-2xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg shadow-lg border border-white/20 mb-4">
+            </div>
+
+            <div class="chat-input-container p-4 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-2xl border border-white/20 shadow-lg">
+                <form id="chat-form" class="flex gap-4">
+                    <div class="input-container flex-grow relative">
+                        <input type="text" 
+                                id="user-input" 
+                                class="w-full p-4 pr-12 border border-purple-200 dark:border-purple-900/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-700/50 dark:text-gray-100 backdrop-blur-sm transition-all"
+                                placeholder="Type your message here..."
+                                required>
+                    </div>
+                    <button type="submit" 
+                            class="send-button bg-gradient-to-r from-purple-500 to-indigo-600 dark:from-purple-600 dark:to-indigo-700 text-white px-8 py-4 rounded-xl hover:opacity-90 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 shadow-lg">
+                        <span>Send</span>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                    d="M14 5l7 7m0 0l-7 7m7-7H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatMessages = document.getElementById('chat-messages');
+
+        function createTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator bg-gray-100 dark:bg-gray-700 rounded-lg p-4 inline-block';
+            typingDiv.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            return typingDiv;
+        }
+
+        function appendMessage(message, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'} flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `message-content ${isUser ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-100 dark:bg-gray-700'} rounded-2xl p-4 inline-block max-w-[80%] shadow-sm`;
+            
+            if (message.includes('```')) {
+                const parts = message.split('```');
+                parts.forEach((part, index) => {
+                    if (index % 2 === 0) {
+                        if (part.trim()) {
+                            const textP = document.createElement('p');
+                            textP.textContent = part.trim();
+                            contentDiv.appendChild(textP);
+                        }
+                    } else {
+                        const codeContainer = document.createElement('div');
+                        codeContainer.className = 'relative group mt-2';
+                        
+                        const pre = document.createElement('pre');
+                        pre.className = 'line-numbers';
+                        const code = document.createElement('code');
+                        
+                        let language = 'plaintext';
+                        const firstLine = part.trim().split('\n')[0];
+                        if (firstLine.match(/^(python|javascript|java|cpp|csharp|css|json|bash)/i)) {
+                            language = firstLine.toLowerCase();
+                            code.textContent = part.trim().split('\n').slice(1).join('\n');
+                        } else {
+                            code.textContent = part.trim();
+                        }
+                        
+                        code.className = `language-${language}`;
+                        pre.appendChild(code);
+                        
+                        const copyButton = document.createElement('button');
+                        copyButton.className = 'copy-button absolute top-2 right-2 bg-gray-700 text-white px-3 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2';
+                        copyButton.innerHTML = `
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                            </svg>
+                            <span>Copy</span>
+                        `;
+                        
+                        copyButton.addEventListener('click', async () => {
+                            try {
+                                await navigator.clipboard.writeText(code.textContent);
+                                copyButton.innerHTML = `
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span>Copied!</span>
+                                `;
+                                copyButton.classList.add('bg-green-600');
+                                
+                                setTimeout(() => {
+                                    copyButton.innerHTML = `
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                                        </svg>
+                                        <span>Copy</span>
+                                    `;
+                                    copyButton.classList.remove('bg-green-600');
+                                }, 2000);
+                            } catch (err) {
+                                console.error('Failed to copy:', err);
+                            }
+                        });
+                        
+                        codeContainer.appendChild(pre);
+                        codeContainer.appendChild(copyButton);
+                        contentDiv.appendChild(codeContainer);
+                        
+                        Prism.highlightElement(code);
+                    }
+                });
+            } else {
+                const textP = document.createElement('p');
+                textP.textContent = message;
+                contentDiv.appendChild(textP);
+            }
+            
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Clear input and disable
+            userInput.value = '';
+            userInput.disabled = true;
+            
+            // Append user message
+            appendMessage(message, true);
+
+            // Show typing indicator
+            const typingMessage = document.createElement('div');
+            typingMessage.className = 'message bot flex justify-start';
+            typingMessage.appendChild(createTypingIndicator());
+            chatMessages.appendChild(typingMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+                
+                // Remove typing indicator
+                chatMessages.removeChild(typingMessage);
+                
+                if (data.success) {
+                    appendMessage(data.reply);
+                } else {
+                    appendMessage('Sorry, I encountered an error. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                chatMessages.removeChild(typingMessage);
+                appendMessage('Sorry, I encountered an error. Please try again.');
+            } finally {
+                // Re-enable input
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        });
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        const sunIcon = document.querySelector('.sun-icon');
+        const moonIcon = document.querySelector('.moon-icon');
+
+        // Check for saved theme preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            sunIcon.classList.add('hidden');
+            moonIcon.classList.remove('hidden');
+        } else {
+            html.classList.remove('dark');
+            moonIcon.classList.add('hidden');
+            sunIcon.classList.remove('hidden');
+        }
+
+        themeToggle.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            sunIcon.classList.toggle('hidden');
+            moonIcon.classList.toggle('hidden');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // Initial greeting
+        appendMessage("Hello! I'm your AI assistant. How can I help you today?", false);
+    </script>
+    <!-- Add Prism.js and its plugins -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-csharp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+</body>
+</html>
