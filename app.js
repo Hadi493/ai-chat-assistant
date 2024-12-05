@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Initialize Gemini AI
+// Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Serve static files
@@ -25,23 +25,85 @@ app.post('/api/chat', async (req, res) => {
     try {
         const { message } = req.body;
         
-        // Initialize the model
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        if (!message) {
+            return res.status(400).json({
+                success: false,
+                error: 'Message is required'
+            });
+        }
+
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(500).json({
+                success: false,
+                error: 'Gemini API key is not configured'
+            });
+        }
         
-        // Generate content
-        const result = await model.generateContent(message);
-        const response = await result.response;
-        const text = response.text();
+        // Generate content using Gemini with retry logic
+        let retries = 3;
+        let result;
+        let text;
+        
+        while (retries > 0) {
+            try {
+                // Initialize the model
+                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+                
+                // Generate content
+                result = await model.generateContent(message);
+                const response = await result.response;
+                text = response.text();
+                
+                break; // If successful, exit the loop
+            } catch (error) {
+                console.error('Gemini Error:', error);
+                
+                if (error.message?.includes('quota')) {
+                    console.log(`Rate limit exceeded, retries left: ${retries-1}`);
+                    if (retries > 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        retries--;
+                        continue;
+                    }
+                    return res.status(429).json({
+                        success: false,
+                        error: 'Rate limit exceeded. Please try again in a moment.'
+                    });
+                }
+                
+                // Handle specific Gemini errors
+                if (error.message?.includes('invalid')) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invalid request to AI service'
+                    });
+                } else if (error.message?.includes('authentication')) {
+                    return res.status(401).json({
+                        success: false,
+                        error: 'Invalid API key'
+                    });
+                }
+                
+                throw error;
+            }
+        }
+        
+        if (!result || !text) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to get response from AI service'
+            });
+        }
         
         res.json({ 
             success: true,
-            reply: text 
+            reply: text
         });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Server Error:', error);
         res.status(500).json({ 
             success: false, 
-            error: 'An error occurred while processing your request' 
+            error: 'An unexpected error occurred'
         });
     }
 });
@@ -49,13 +111,9 @@ app.post('/api/chat', async (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ 
-        success: false, 
-        error: 'Something went wrong!' 
-    });
+    res.status(500).send('Something broke!');
 });
 
-// Start server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server is running on port ${port}`);
 });
