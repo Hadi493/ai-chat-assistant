@@ -161,6 +161,19 @@
             messageDiv.appendChild(contentDiv);
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            if (message.toLowerCase().includes('create an image') || 
+                message.toLowerCase().includes('generate an image') ||
+                message.toLowerCase().includes('draw')) {
+                const warningDiv = document.createElement('div');
+                warningDiv.className = 'message bot flex justify-start';
+                warningDiv.innerHTML = `
+                    <div class="message-content bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-2xl p-4 inline-block max-w-[80%]">
+                        <p>⚠️ Image generation is not supported by this AI assistant. The text you see is just a description of an image, but I cannot actually create images. For image generation, please use services like DALL-E, Stable Diffusion, or Midjourney.</p>
+                    </div>
+                `;
+                chatMessages.appendChild(warningDiv);
+            }
         }
 
         chatForm.addEventListener('submit', async (e) => {

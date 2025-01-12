@@ -3,6 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
+const fetch = require('node-fetch');
+
+// Adicione este log logo após o require('dotenv').config();
+console.log('Checking environment:', {
+    envLoaded: process.env.GEMINI_API_KEY ? 'Yes' : 'No',
+    keyLength: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0,
+    keyStart: process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.substring(0, 4) : 'none'
+});
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -12,7 +20,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// Initialize Gemini
+// Adicione este log para debug
+console.log('Gemini API Key:', process.env.GEMINI_API_KEY ? 'Presente' : 'Ausente');
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Serve static files
@@ -103,6 +113,115 @@ app.post('/api/chat', async (req, res) => {
         console.error('Server Error:', error);
         res.status(500).json({ 
             success: false, 
+            error: 'An unexpected error occurred'
+        });
+    }
+});
+
+// Image generation endpoint using ModelsLab API
+app.post('/api/generate-image', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+
+        if (!prompt) {
+            return res.status(400).json({
+                success: false,
+                error: 'Prompt is required'
+            });
+        }
+
+        try {
+            const response = await fetch('https://modelslab.com/api/v6/realtime/text2img', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.MODELSLAB_API_KEY}`
+                },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    model_name: "sdxl",  // Using
+                    negative_prompt: 'nsfw, nude, bad quality',
+                    width: 512,
+                    height: 512,
+                    guidance_scale: 7.5,
+                    num_inference_steps: 50,
+                    num_images: 1,
+                    safety_checker: true
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`ModelsLab API error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.images && data.images.length > 0) {
+                res.json({
+                    success: true,
+                    imageUrl: data.images[0]
+                });
+            } else {
+                throw new Error('No image generated');
+            }
+
+        } catch (error) {
+            console.error('Image Generation Error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to generate image. Please try again.'
+            });
+        }
+
+    } catch (error) {
+        console.error('Image Generation Error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to generate image. Please try again.'
+        });
+    }
+});
+
+// Image analysis endpoint
+app.post('/api/analyze-image', async (req, res) => {
+    try {
+        const { imageUrl } = req.body;
+
+        if (!imageUrl) {
+            return res.status(400).json({
+                success: false,
+                error: 'Image URL is required'
+            });
+        }
+
+        // Initialize the Gemini Pro Vision model
+        const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+        try {
+            // Generate content about the image
+            const result = await model.generateContent([
+                "Analyze this image and describe what you see.",
+                { inlineData: { mimeType: "image/jpeg", data: imageUrl } }
+            ]);
+            
+            const response = await result.response;
+            const description = response.text();
+
+            res.json({
+                success: true,
+                description: description
+            });
+        } catch (error) {
+            console.error('Vision Analysis Error:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to analyze image'
+            });
+        }
+    } catch (error) {
+        console.error('Server Error:', error);
+        res.status(500).json({
+            success: false,
             error: 'An unexpected error occurred'
         });
     }
