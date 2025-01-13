@@ -25,6 +25,29 @@ console.log('Gemini API Key:', process.env.GEMINI_API_KEY ? 'Presente' : 'Ausent
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Add this helper function near the top
+function formatAIResponse(text) {
+    // Remove multiple blank lines
+    text = text.replace(/\n{3,}/g, '\n\n');
+    
+    // Ensure code blocks are properly formatted
+    text = text.replace(/```(\w+)?\s*([\s\S]*?)```/g, (match, language, code) => {
+        // Remove empty lines at start and end of code block
+        code = code.trim();
+        // Add language tag if missing
+        language = language || 'plaintext';
+        return `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
+    });
+    
+    // Add proper line breaks between sections
+    text = text.replace(/([^.!?])\n([A-Z])/g, '$1\n\n$2');
+    
+    // Clean up bullet points
+    text = text.replace(/^\s*[-*]\s*/gm, '• ');
+    
+    return text.trim();
+}
+
 // Serve static files
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -105,9 +128,12 @@ app.post('/api/chat', async (req, res) => {
             });
         }
         
+        // Format the response before sending
+        const formattedText = formatAIResponse(text);
+        
         res.json({ 
             success: true,
-            reply: text
+            reply: formattedText
         });
     } catch (error) {
         console.error('Server Error:', error);

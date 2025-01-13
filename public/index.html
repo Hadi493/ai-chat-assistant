@@ -80,100 +80,40 @@
             messageDiv.className = `message ${isUser ? 'user' : 'bot'} flex ${isUser ? 'justify-end' : 'justify-start'}`;
             
             const contentDiv = document.createElement('div');
-            contentDiv.className = `message-content ${isUser ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-100 dark:bg-gray-700'} rounded-2xl p-4 inline-block max-w-[80%] shadow-sm`;
+            contentDiv.className = `message-content ${isUser ? 'bg-purple-100 dark:bg-purple-900/50' : 'bg-gray-100 dark:bg-gray-700'} rounded-2xl p-4 inline-block max-w-[80%] shadow-sm space-y-2`;
             
-            if (message.includes('```')) {
-                const parts = message.split('```');
-                parts.forEach((part, index) => {
-                    if (index % 2 === 0) {
-                        if (part.trim()) {
-                            const textP = document.createElement('p');
-                            textP.textContent = part.trim();
-                            contentDiv.appendChild(textP);
+            // Split message into paragraphs and format each
+            const paragraphs = message.split('\n\n');
+            paragraphs.forEach(paragraph => {
+                if (paragraph.trim().startsWith('```')) {
+                    // Handle code blocks
+                    const codeContainer = formatCodeBlock(paragraph);
+                    contentDiv.appendChild(codeContainer);
+                } else if (paragraph.trim().startsWith('•')) {
+                    // Handle bullet points
+                    const ul = document.createElement('ul');
+                    ul.className = 'list-disc list-inside space-y-1';
+                    const items = paragraph.split('\n');
+                    items.forEach(item => {
+                        if (item.trim()) {
+                            const li = document.createElement('li');
+                            li.textContent = item.trim().replace('• ', '');
+                            ul.appendChild(li);
                         }
-                    } else {
-                        const codeContainer = document.createElement('div');
-                        codeContainer.className = 'relative group mt-2';
-                        
-                        const pre = document.createElement('pre');
-                        pre.className = 'line-numbers';
-                        const code = document.createElement('code');
-                        
-                        let language = 'plaintext';
-                        const firstLine = part.trim().split('\n')[0];
-                        if (firstLine.match(/^(python|javascript|java|cpp|csharp|css|json|bash)/i)) {
-                            language = firstLine.toLowerCase();
-                            code.textContent = part.trim().split('\n').slice(1).join('\n');
-                        } else {
-                            code.textContent = part.trim();
-                        }
-                        
-                        code.className = `language-${language}`;
-                        pre.appendChild(code);
-                        
-                        const copyButton = document.createElement('button');
-                        copyButton.className = 'copy-button absolute top-2 right-2 bg-gray-700 text-white px-3 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2';
-                        copyButton.innerHTML = `
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
-                            </svg>
-                            <span>Copy</span>
-                        `;
-                        
-                        copyButton.addEventListener('click', async () => {
-                            try {
-                                await navigator.clipboard.writeText(code.textContent);
-                                copyButton.innerHTML = `
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                    </svg>
-                                    <span>Copied!</span>
-                                `;
-                                copyButton.classList.add('bg-green-600');
-                                
-                                setTimeout(() => {
-                                    copyButton.innerHTML = `
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
-                                        </svg>
-                                        <span>Copy</span>
-                                    `;
-                                    copyButton.classList.remove('bg-green-600');
-                                }, 2000);
-                            } catch (err) {
-                                console.error('Failed to copy:', err);
-                            }
-                        });
-                        
-                        codeContainer.appendChild(pre);
-                        codeContainer.appendChild(copyButton);
-                        contentDiv.appendChild(codeContainer);
-                        
-                        Prism.highlightElement(code);
-                    }
-                });
-            } else {
-                const textP = document.createElement('p');
-                textP.textContent = message;
-                contentDiv.appendChild(textP);
-            }
+                    });
+                    contentDiv.appendChild(ul);
+                } else if (paragraph.trim()) {
+                    // Handle regular text
+                    const p = document.createElement('p');
+                    p.textContent = paragraph.trim();
+                    p.className = 'text-gray-800 dark:text-gray-200';
+                    contentDiv.appendChild(p);
+                }
+            });
             
             messageDiv.appendChild(contentDiv);
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            if (message.toLowerCase().includes('create an image') || 
-                message.toLowerCase().includes('generate an image') ||
-                message.toLowerCase().includes('draw')) {
-                const warningDiv = document.createElement('div');
-                warningDiv.className = 'message bot flex justify-start';
-                warningDiv.innerHTML = `
-                    <div class="message-content bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-2xl p-4 inline-block max-w-[80%]">
-                        <p>⚠️ Image generation is not supported by this AI assistant. The text you see is just a description of an image, but I cannot actually create images. For image generation, please use services like DALL-E, Stable Diffusion, or Midjourney.</p>
-                    </div>
-                `;
-                chatMessages.appendChild(warningDiv);
-            }
         }
 
         chatForm.addEventListener('submit', async (e) => {
