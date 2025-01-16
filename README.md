@@ -13,7 +13,7 @@
   <strong>A sleek and modern AI chat interface powered by Google's Gemini API ✨</strong>
 </p>
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing)
+[Features](#-features) • [Quick Start](#-quick-start) • [Installation](#-installation) • [App Link](https://ai-chat-assistant-azoy.onrender.com/) • [Contributing](#-contributing)
 
 </div>
 
